@@ -1,0 +1,259 @@
+﻿
+@{
+    ViewBag.Title = "Consultants";
+}
+
+
+
+<style>
+    table, th, td {
+        border: 1px solid black;
+        padding: 10px;
+    }
+
+    table {
+        border-spacing: 15px;
+    }
+</style>
+
+<div>
+    <h2>Consultants</h2>
+    <ul id="consultants" />
+
+    <table style="width:100%" id="tableOfItems">
+        <col width="80">
+
+        <tr>
+            <th>Admin</th>
+            <th>Name</th>
+            <th>Employment date</th>
+        </tr>
+
+        @*<tr>
+            <td>Jill</td>
+            <td>Smith</td>
+            <td>50</td>
+        </tr>
+        <tr>
+            <td>Eve</td>
+            <td>Jackson</td>
+            <td>94</td>
+        </tr>
+        <tr>
+            <td>John</td>
+            <td>Doe</td>
+            <td>80</td>
+        </tr>*@
+    </table>
+</div>
+
+<br />
+
+<div>
+    <h2>+ Add new Consultant</h2>
+
+    <form action="action_page.php">
+        Name:
+        <input id="name" type="text" size="5" />
+
+        Employment date:
+        <input id="date" type="date" name="bday">
+        <input type="button" value="Add" onclick="addConsultant(document.getElementById('name').value, document.getElementById('date').value);" />
+    </form>
+</div>
+
+<br />
+
+
+
+
+
+<p id="product" />
+
+
+@*SCRIPT*@
+
+<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.9.2/jquery-ui.min.js"></script>
+
+
+
+<script type="text/javascript">
+
+    var consUri = '../api/consultants';
+
+    function ajaxHelper(uri, method, data) {
+
+        return $.ajax({
+            type: method,
+            url: uri,
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data ? JSON.stringify(data) : null
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+           // alert("ERORR");
+        });
+    }
+
+
+    function getAllConsultants() {
+
+        //var removeButton = "<input type='button' value='Remove' onclick='' />";
+
+        $('#tableOfItems').html("");
+        $('<tr><th>Admin</th><th>Name</th><th>Employment Date</th></tr>').appendTo($('#tableOfItems'));
+
+        ajaxHelper(consUri, 'GET').done(function (data) {
+
+                $.each(data, function (key, item) {
+                    // Add a list item for the product.
+                    //$('<li>', { text: item.Name }).appendTo($('#consultants'));
+
+                    var rowKey = item.RowKey.toString();
+
+                    var removeButton = "<input class='remove' type='button' value='Remove' onclick='removeConsultant(\"" + rowKey + "\");' />";
+
+                    var editButton = "<input class='edit' type='button' value='Edit' onclick='edit(this,\"" + rowKey + "\");' />";
+
+                    var editDoneButton = "<input type='button' value='Done' onclick='editConsultant(\"" + rowKey + "\");' />";
+
+                    
+                    
+                    $('<tr id=' + rowKey + '><td>' + removeButton + editButton + "</td><td class='name'>" + item.Name + "</td><td class='date'>" + item.EmploymentDate + '</td></tr>').appendTo($('#tableOfItems'));
+
+                    $('td','#'+rowKey+'').each(function () {
+                        $(this).addClass('' + rowKey + '');
+
+                    });
+
+                    
+                });
+        });
+    }
+
+    function addConsultant(name, date) {
+
+        var consulant = {
+            Name: name,
+            EmploymentDate: date.toString()
+        };
+
+        $.ajax({
+            url: consUri + "/add",
+            cache: false,
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify(consulant),
+            statusCode: {
+                201 /*Created*/: function (data) {
+                    //update GUI here
+                    getAllConsultants();
+                }
+            }
+        })
+        .fail(
+        function (xhr, textStatus, err) {
+            //alert("error creating new consultant");
+        });
+    }
+
+    function removeConsultant(rowKey) {
+
+        var consultant = {
+            RowKey: rowKey
+        };
+
+        $.ajax({
+            url: consUri + "/remove",
+            cache: false,
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify(consultant),
+            statusCode: {
+                200 /*Created*/: function (data) {
+                    //update GUI here
+                    getAllConsultants();
+                }
+            }
+        })
+        .fail(
+        function (xhr, textStatus, err) {
+            //alert("error creating new consultant" + xhr + textStatus + err);
+        });
+    }
+
+    function editConsultant(rowKey, newName, newDate) {
+
+        var consultant = {
+            EmploymentDate: newDate,
+            Name: newName,
+            RowKey: rowKey
+        };
+
+        $.ajax({
+            url: consUri + "/edit",
+            cache: false,
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify(consultant),
+            statusCode: {
+                200 /*Created*/: function (data) {
+                    //update GUI here
+                    getAllConsultants();
+                }
+            }
+        })
+        .fail(
+        function (xhr, textStatus, err) {
+            //alert("error creating new consultant" + xhr + textStatus + err);
+        });
+    }
+
+    function edit(element, rowKey) {
+
+        var name = $('.name.' + rowKey + '').text();
+        var date = $('.date.' + rowKey + '').text();
+
+        var nameTextBox = "<input id='editName' class='" + rowKey + "'' type='text' value='" + name + "'/>";
+        var dateTextBox = "<input id='editDate' class='" + rowKey + "'' type='date' value='" + date + "'/>";
+
+
+        $('.name.' + rowKey + '').html(nameTextBox);
+        $('.date.' + rowKey + '').html(dateTextBox);
+
+
+        element.value = "Done";
+        element.className = "editing";
+
+        element.onclick = function () {
+
+            var newName = $('#editName').val();
+            var newDate = $('#editDate').val();
+
+            editConsultant(rowKey, newName, newDate);
+        };
+
+
+        $('.edit').each(function () {
+            $(this).remove();
+        });
+        $('.remove').each(function () {
+            $(this).remove();
+        });
+    };
+
+
+    getAllConsultants();
+
+    if ($('#date')[0].type != 'date') $('#date').datepicker();
+
+
+
+
+
+
+
+</script>
+
+@*support date picker in IE*@
+@*http://jsfiddle.net/2AaFk/1/*@

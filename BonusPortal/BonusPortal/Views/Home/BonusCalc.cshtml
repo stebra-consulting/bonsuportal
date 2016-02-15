@@ -1,0 +1,183 @@
+﻿
+@{
+    ViewBag.Title = "Consultants";
+}
+
+<div>
+    <h2>Company net income (per month)</h2>
+
+    <form action="action_page.php">
+        Name:
+        <input id="netIncome" type="text" value="100000" size="5" />
+        <div id="message">
+
+
+        </div>
+
+    </form>
+</div>
+
+<style>
+    table, th, td {
+        border: 1px solid black;
+        padding: 10px;
+    }
+
+    table {
+        border-spacing: 15px;
+    }
+</style>
+
+<div>
+    <h2>Consultants</h2>
+    <ul id="consultants" />
+
+    <table style="width:100%" id="tableOfItems">
+        @*generated html here*@
+
+    </table>
+</div>
+
+
+
+
+
+
+@*SCRIPT*@
+<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+
+<script type="text/javascript">
+
+    var consUri = '../api/consultants';
+
+    function ajaxHelper(uri, method, data) {
+
+        return $.ajax({
+            type: method,
+            url: uri,
+            dataType: 'json',
+            contentType: 'application/json',
+            data: data ? JSON.stringify(data) : null
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            //alert("ERORR");
+        });
+    }
+
+
+    function getAllConsultants() {
+
+        //var removeButton = "<input type='button' value='Remove' onclick='' />";
+
+        $('#tableOfItems').html("");
+        $('<tr><th>Hours logged</th><th>Name</th><th>Employment Date</th><th>Bonus</th></tr>').appendTo($('#tableOfItems'));
+
+        ajaxHelper(consUri, 'GET').done(function (data) {
+
+                $.each(data, function (key, item) {
+
+                    var rowKey = item.RowKey.toString();
+
+
+
+
+                    var hoursTextBox = '<input class="\hours ' + rowKey + '\" type="text" value="' + item.Hours + '" size="5" />';
+
+
+                    //var editButton = "<input class='edit' type='button' value='Edit' onclick='edit(this,\"" + rowKey + "\");' />";
+                    $('<tr id=' + rowKey + "><td>" + hoursTextBox + "</td><td class='name'>" + item.Name + "</td><td class='date'>" + item.EmploymentDate + "</td><td class='bonus' ></td></tr>").appendTo($('#tableOfItems'));
+
+
+                    $('td', '#' + rowKey + '').each(function () {
+
+                        $(this).addClass('' + rowKey + '');
+
+                    });
+
+
+                    $(".hours." + rowKey + "").blur(function () { calculateMyBonus(rowKey) });
+
+                });
+
+
+        });
+    }
+
+    function calculateMyBonus(rowKey) {
+
+        if ($('#netIncome').val().length == 0) {
+            displayMessage();
+            return;
+        };
+
+        var numberOfConsults = $('input.hours').length;
+
+        var consultants = [];
+
+        var hoursPool = 0;
+        $('input.hours').each(function () {
+            hoursPool += parseFloat($(this).val());
+
+            var toArrayHours = $(this).val();
+            elementClasses = $(this).attr('class').split(' ');
+            var toArrayKey = elementClasses[1];
+
+            consultants.push({
+                RowKey: toArrayKey,
+                Hours: toArrayHours
+            });
+
+
+        });
+
+        var netIcome = $('#netIncome').val();
+
+        $.ajax({
+            url: consUri + "/array?netIncome=" + netIcome,
+
+            cache: false,
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify(consultants),
+            statusCode: {
+                200 /*Created*/: function (data) {
+
+                    var array = JSON.parse(data);
+
+                    $.each(array, function (key, item) {
+                        var cKey = item.RowKey;
+
+                        var bonus = item.MyBonusAsSEK
+
+                        //prevent negative numbers from showing up
+                        if (parseInt(bonus) < 0) {
+                            bonus = "0";
+                        }
+
+                        $('td.bonus.' + cKey).html(bonus + " :-");
+                    });  
+                }
+            }
+        })
+        .fail(
+        function (xhr, textStatus, err) {
+            //alert("error creating new consultant");
+        });
+    }
+
+    function displayMessage() {
+        if ($('#netIncome').val().length == 0) {
+            $('#message').html("<p style='color:red;'>(!) This field is required</p>");
+        }
+    };
+
+    $('#netIncome').focusout(function () {
+        displayMessage();
+    });
+
+    getAllConsultants();
+
+
+</script>
+
+@*support date picker in IE*@
+@*http://jsfiddle.net/2AaFk/1/*@
